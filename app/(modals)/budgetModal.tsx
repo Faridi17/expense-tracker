@@ -156,7 +156,8 @@ const budgetModal = () => {
                         <Typo color={colors.neutral200} size={16}>Durasi</Typo>
                         <Input
                             keyboardType="numeric"
-                            value={duration ? `${duration} Hari` : '0 Hari'}
+                            placeholder='0 Hari'
+                            value={duration ? `${duration} Hari` : ''}
                             onChangeText={(value) => {
                                 const days = Number(value.replace(/[^0-9]/g, ''));
 

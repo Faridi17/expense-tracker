@@ -27,7 +27,6 @@ const budget = () => {
 
     const { data: recentBudget, loading: budgetLoading } = useFetchData<BudgetType>('budgets', queryConstraints);
 
-    console.log(recentBudget);
 
 
     return (

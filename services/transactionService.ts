@@ -2,6 +2,8 @@ import { firestore } from "@/config/firebase";
 import { ResponseType, TransactionType, WalletType } from "@/types";
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { uploadFileToCloudinary } from "./imageService";
+import { Alert } from "react-native";
+import { expenseCategories } from "@/constants/data";
 
 export const createOrUpdateTransaction = async (
     transactionData: Partial<TransactionType>
@@ -120,11 +122,26 @@ const updateBudgetForNewTransaction = async (
         const batchUpdates = budgetSnapshot.docs.map(async (budgetDoc) => {
             const budgetData = budgetDoc.data();
             const newSpent = (budgetData.spent || 0) + amount;
-
+            const budgetLimit = budgetData.amount || 0;
+      
             await updateDoc(doc(firestore, 'budgets', budgetDoc.id), {
-                spent: newSpent
+              spent: newSpent,
             });
-        });
+      
+            // Cek jika pengeluaran melebihi 90% dari total anggaran
+            if (budgetLimit > 0 && newSpent / budgetLimit >= 0.9) {
+              // Gunakan label kategori dari expenseCategories, jika ada
+              const categoryLabel = expenseCategories[category]?.label || category;
+      
+              Alert.alert(
+                'Peringatan Anggaran!',
+                `Pengeluaran untuk kategori ${categoryLabel} telah mencapai ${Math.round(
+                  (newSpent / budgetLimit) * 100
+                )}% dari batas anggaran.`,
+                [{ text: 'OK' }]
+              );
+            }
+          });
 
         await Promise.all(batchUpdates);
 

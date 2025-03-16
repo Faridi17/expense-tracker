@@ -27,13 +27,6 @@ export default function CustomTabs({ state, descriptors, navigation }: BottomTab
                 color={isFocused ? colors.primary : colors.neutral400}
             />
         ),
-        report: (isFocused: boolean) => (
-            <Icons.Notebook
-                size={verticalScale(30)}
-                weight={isFocused ? "fill" : "regular"}
-                color={isFocused ? colors.primary : colors.neutral400}
-            />
-        ),
         profile: (isFocused: boolean) => (
             <Icons.User
                 size={verticalScale(30)}

@@ -21,6 +21,10 @@ const StackLayout = () => {
                 name='(modals)/transactionModal'
                 options={{ presentation: 'modal' }}
             />
+            <Stack.Screen
+                name='(modals)/reportModal'
+                options={{ presentation: 'modal' }}
+            />
         </Stack>
     )
 }

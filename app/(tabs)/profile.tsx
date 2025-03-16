@@ -27,6 +27,12 @@ const Profile = () => {
             bgColor: '#6366f1'
         },
         {
+            title: 'Tutup Buku',
+            icon: <Icons.Notebook size={26} color={colors.white} weight='fill' />,
+            routeName: "/(modals)/reportModal",
+            bgColor: '#ffba00'
+        },
+        {
             title: 'Pengaturan',
             icon: <Icons.GearSix size={26} color={colors.white} weight='fill' />,
             // routeName: "/(modals)/profileModal",

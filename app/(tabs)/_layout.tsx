@@ -8,7 +8,6 @@ const _layout = () => {
             <Tabs.Screen name='index' />
             <Tabs.Screen name='budget' />
             <Tabs.Screen name='wallet' />
-            <Tabs.Screen name='report' />
             <Tabs.Screen name='profile' />
         </Tabs>
     )
