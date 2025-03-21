@@ -10,24 +10,14 @@ import { useRouter } from 'expo-router'
 import { useAuth } from '@/context/authContext'
 import useFetchData from '@/hooks/useFetchData'
 import { WalletType } from '@/types'
-import { orderBy, where } from 'firebase/firestore'
 import Loading from '@/components/Loading'
 import WalletListItem from '@/components/WalletListItem'
 
 const Wallet = () => {
   const router = useRouter()
   const { user } = useAuth();
-  const [queryFilters, setQueryFilters] = useState<any[]>([]);
-  const { data: wallets, loading } = useFetchData<WalletType>('wallets', queryFilters);
-
-  useEffect(() => {
-    if (user?.uid) {
-      setQueryFilters([
-        where('uid', '==', user.uid),
-        orderBy('created', 'desc')
-      ]);
-    }
-  }, [user?.uid]);
+  const { data: wallets, loading } = useFetchData<WalletType>("wallets", user.uid);
+      
 
   const getTotalBalance = () => 
     wallets.reduce((total, item) => {

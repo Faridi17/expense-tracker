@@ -12,8 +12,10 @@ import { ReportType } from '@/types'
 import { exportToExcel } from '@/services/reportService'
 import BackButton from '@/components/BackButton'
 import ModalWrapper from '@/components/ModalWrapper'
+import { useSQLiteContext } from 'expo-sqlite'
 
 const ReportModal = () => {
+    const db = useSQLiteContext()
     const [loading, setLoading] = useState(false)
     const [showFromDatePicker, setShowFromDatePicker] = useState(false)
     const [showToDatePicker, setShowToDatePicker] = useState(false)
@@ -22,8 +24,7 @@ const ReportModal = () => {
         fromDate: new Date(),
         toDate: new Date(),
     })
-    const { user } = useAuth()
-
+    const { user } = useAuth()    
 
     const onChangeDate = (event: any, selectedDate: any, field: 'fromDate' | 'toDate') => {
         if (selectedDate) {
@@ -47,7 +48,7 @@ const ReportModal = () => {
         }
 
         setLoading(true)
-        const res = await exportToExcel(user?.uid || '', report)
+        const res = await exportToExcel(db, user?.uid || '', report)
         setLoading(false)
 
         if (res.success) {

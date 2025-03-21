@@ -12,17 +12,7 @@ import { formatRupiah } from '@/services/formatRupiah'
 
 const HomeCard = () => {
     const { user } = useAuth()
-    const [queryFilters, setQueryFilters] = useState<any[]>([]);
-    const { data: wallets, loading: walletLoading } = useFetchData<WalletType>('wallets', queryFilters);
-
-    useEffect(() => {
-        if (user?.uid) {
-            setQueryFilters([
-                where('uid', '==', user.uid),
-                orderBy('created', 'desc')
-            ]);
-        }
-    }, [user?.uid]);
+    const { data: wallets, loading: walletLoading } = useFetchData<WalletType>("wallets", user?.uid);
 
     const getTotals = () => {
         return wallets.reduce((totals: any, item: WalletType) => {

@@ -1,27 +1,37 @@
-import { firestore } from "@/config/firebase";
 import { ResponseType, UserDataType } from "@/types";
-import { doc, updateDoc } from "firebase/firestore";
-import { uploadFileToCloudinary } from "./imageService";
+import { useSQLiteContext } from "expo-sqlite";
+import { uploadFileToLocal } from "./imageService";
 
 export const updateUser = async (
-    uid: string,
+    db: ReturnType<typeof useSQLiteContext>, 
+    uid: string, 
     updatedData: UserDataType
 ): Promise<ResponseType> => {
     try {
-
-        if(updatedData.image && updatedData?.image?.uri) {
-            const imageUploadRes = await uploadFileToCloudinary(updatedData.image, 'users')
-            if(!imageUploadRes.success) {
-                return { success: false, msg: imageUploadRes.msg || 'Gagal menggunggah foto'}
-                
+        if (updatedData.image && updatedData?.image?.uri) {
+            const imageUploadRes = await uploadFileToLocal(updatedData.image, 'users');
+            if (!imageUploadRes.success) {
+                return { success: false, msg: imageUploadRes.msg || 'Gagal menggunggah foto' };
             }
-            updatedData.image = imageUploadRes.data
+            updatedData.image = imageUploadRes.data;
         }
-        const useRef = doc(firestore, 'users', uid)
-        await updateDoc(useRef, updatedData)
 
-        return { success: true, msg: 'Berhasil diubah' }
+        await db.runAsync(
+            `UPDATE users 
+             SET name = ?, image = ?, phone = ?, profession = ?, address = ? 
+             WHERE uid = ?`,
+            [
+                updatedData.name,
+                updatedData.image || null,
+                updatedData.phone || null,
+                updatedData.profession || null,
+                updatedData.address || null,
+                uid
+            ]
+        );
+
+        return { success: true, msg: 'Berhasil diubah' };
     } catch (error: any) {
-        return { success: false, msg: error?.message }
+        return { success: false, msg: error?.message };
     }
-}
+};

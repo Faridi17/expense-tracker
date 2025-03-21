@@ -14,8 +14,10 @@ import { useAuth } from '@/context/authContext'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import ImageUpload from '@/components/ImageUpload'
 import { createOrUpdateWallet, deleteWallet } from '@/services/walletService'
+import { useSQLiteContext } from 'expo-sqlite'
 
 const WaletModal = () => {
+    const db = useSQLiteContext();
     const { user } = useAuth()
     const [loading, setLoading] = useState(false)
     const [wallet, setWallet] = useState<WalletType>({
@@ -23,7 +25,7 @@ const WaletModal = () => {
         image: null
     })
     const router = useRouter()
-    const oldWallet: { name: string; image: string; id: string} = useLocalSearchParams()
+    const oldWallet: { name: string; image: string; id: string} = useLocalSearchParams()    
 
     useEffect(() => {
         if(oldWallet?.id) {
@@ -50,7 +52,8 @@ const WaletModal = () => {
         if(oldWallet?.id) data.id = oldWallet?.id
         
         setLoading(true)
-        const res = await createOrUpdateWallet(data)
+        
+        const res = await createOrUpdateWallet(db, data)
         setLoading(false)
 
         if(res.success) {

@@ -11,9 +11,8 @@ import { getProfileImage } from '@/services/imageService'
 import * as Icons from 'phosphor-react-native'
 import { accountOptionType } from '@/types'
 import Animated, { FadeInDown } from 'react-native-reanimated'
-import { signOut } from 'firebase/auth'
-import { auth } from '@/config/firebase'
 import { useRouter } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const Profile = () => {
     const { user } = useAuth()
@@ -53,7 +52,8 @@ const Profile = () => {
     ]
 
     const handleLogout = async () => {
-        await signOut(auth)
+        await AsyncStorage.removeItem('user_id');
+        router.replace('/(auth)/welcome')
     }
 
     const showLogoutAlert = () => {

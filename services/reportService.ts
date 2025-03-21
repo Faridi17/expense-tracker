@@ -1,53 +1,45 @@
 import * as FileSystem from 'expo-file-system';
 import * as XLSX from 'xlsx';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
-import { Alert } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import { ReportType, ResponseType } from '@/types';
-import { firestore } from '@/config/firebase';
+import { Alert } from 'react-native';
 import { formatRupiah } from './formatRupiah';
 import { expenseCategories, transactionTypes } from '@/constants/data';
+import { SQLiteDatabase } from 'expo-sqlite';
 
-export const exportToExcel = async (uid: string, report: ReportType): Promise<ResponseType> => {
+export const exportToExcel = async (
+    db: SQLiteDatabase,
+    uid: string,
+    report: { fromDate: string; toDate: string; nameReport: string }
+): Promise<{ success: boolean; msg?: string }> => {
     try {
-        const db = firestore;
+        const fromDate = new Date(report.fromDate).toISOString().slice(0, 19).replace("T", " ");
+        const toDate = new Date(report.toDate).toISOString().slice(0, 19).replace("T", " ");
 
-        const transactionQuery = query(
-            collection(db, 'transactions'),
-            where('uid', '==', uid),
-            where('date', '>=', report.fromDate),
-            where('date', '<=', report.toDate),
-            orderBy('date', 'desc')
+        const transactions = await db.getAllAsync(
+            `SELECT * FROM transactions WHERE uid = ? AND createdAt >= ? AND createdAt <= ?`,
+            [uid, fromDate, toDate]
         );
 
-        const querySnapshot = await getDocs(transactionQuery);
-        
-
-        if (querySnapshot.empty) {
+        if (transactions.length === 0) {
             Alert.alert('Info', 'Tidak ada transaksi untuk diekspor.');
             return { success: false, msg: 'Tidak ada transaksi untuk diekspor' };
         }
 
-        // Konversi data transaksi ke format array untuk Excel
-        const dataForExcel = querySnapshot.docs.map((doc, index) => {
-            const item = doc.data();
-            
-            return {
-                No: index + 1,
-                Tanggal: item.date.toDate().toLocaleDateString(),
-                Tipe: transactionTypes.find((t) => t.value === item.type)?.label || '-',
-                Kategori: expenseCategories[item.category]?.label || '-',
-                Deskripsi: item.description || '-',
-                Jumlah: formatRupiah(item.amount || 0) 
-            };
-        });
+        const dataForExcel = transactions.map((item: any, index: number) => ({
+            No: index + 1,
+            Tanggal: new Date(item.createdAt).toISOString().split('T')[0],
+            Tipe: transactionTypes.find((t) => t.value === item.type)?.label || '-',
+            Kategori: expenseCategories[item.category]?.label || '-',
+            Deskripsi: item.description || '-',
+            Jumlah: formatRupiah(item.amount || 0),
+        }));
+        
 
         const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi');
 
         const excelData = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-
         const fileUri = FileSystem.documentDirectory + `${report.nameReport}.xlsx`;
 
         await FileSystem.writeAsStringAsync(fileUri, excelData, { encoding: FileSystem.EncodingType.Base64 });

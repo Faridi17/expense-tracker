@@ -10,7 +10,6 @@ import HomeCard from '@/components/HomeCard'
 import TransactionList from '@/components/TransactionList'
 import Button from '@/components/Button'
 import { useRouter } from 'expo-router'
-import { limit, orderBy, where } from 'firebase/firestore'
 import useFetchData from '@/hooks/useFetchData'
 import { TransactionType } from '@/types'
 import { Image } from 'expo-image'
@@ -19,11 +18,7 @@ import { getProfileImage } from '@/services/imageService'
 const Home = () => {
     const { user } = useAuth()
     const router = useRouter()
-    const queryConstraints = user?.uid
-        ? [where('uid', '==', user.uid), orderBy('date', 'desc'), limit(30)]
-        : [];
-
-    const { data: recentTransaction, loading: transactionLoading } = useFetchData<TransactionType>('transactions', queryConstraints);
+    const { data: recentTransaction, loading: transactionLoading } = useFetchData<TransactionType>("transactions", user?.uid);
 
     return (
         <ScreenWrapper>

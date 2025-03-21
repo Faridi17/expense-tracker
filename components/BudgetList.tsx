@@ -45,18 +45,18 @@ const BudgetItem = ({ item, index }: BudgetItemProps) => {
     let category = expenseCategories[item.category!]
     const IconComponent = category.icon
     const dateNow = new Date();
-    const toDate = item.toDate.toDate();
-    const diffTime = toDate.getTime() - dateNow.getTime();
+    const endDate = new Date(item.endDate); 
+    
+    const diffTime = endDate.getTime() - dateNow.getTime();
     const remainingDay = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
     const progress = Math.min(item.spent / item.amount, 1);
 
     const percentage = Math.round(progress * 100);
-    const remainingBudget = item.amount - item.spent;;
+    const remainingBudget = item.amount - item.spent;
     const progressColor =
         percentage > 90 ? colors.rose :
             percentage > 50 ? colors.yellow :
                 colors.primary;
-
 
     return (
         <View style={styles.container}>
@@ -84,10 +84,8 @@ const BudgetItem = ({ item, index }: BudgetItemProps) => {
                     </View>
                 </View>
 
-
                 {/* Progress Bar */}
                 <View style={styles.progressContainer}>
-
                     <ProgressBar
                         progress={progress}
                         width={300}
@@ -102,7 +100,6 @@ const BudgetItem = ({ item, index }: BudgetItemProps) => {
                             {percentage}%
                         </Typo>
                     </View>
-
                 </View>
 
                 {/* Budget Info */}
@@ -115,13 +112,13 @@ const BudgetItem = ({ item, index }: BudgetItemProps) => {
                     </View>
                     <View style={styles.budgetItem}>
                         <Typo size={12} color={colors.neutral400}>{remainingDay} Hari</Typo>
-                        
                     </View>
                 </View>
             </View>
         </View>
     );
-}
+};
+
 
 export default BudgetList;
 

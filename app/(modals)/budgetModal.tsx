@@ -16,9 +16,11 @@ import { BudgetType } from '@/types'
 import { createBudget } from '@/services/budgetService'
 import { useRouter } from 'expo-router'
 import { useAuth } from '@/context/authContext'
+import { useSQLiteContext } from 'expo-sqlite'
 
 
 const budgetModal = () => {
+    const db = useSQLiteContext()
     const [loading, setLoading] = useState(false)
     const [showDatePicker, setShowDatePicker] = useState(false)
     const [duration, setDuration] = useState<number>(0);
@@ -26,23 +28,26 @@ const budgetModal = () => {
         category: 'expense',
         amount: 0,
         spent: 0,
-        fromDate: new Date(),
-        toDate: new Date(),
+        startDate: new Date(),
+        endDate: new Date(),
         uid: '',
     })
+
+    
+    
     const { user } = useAuth()
     const router = useRouter()
 
     const onDateChange = (event: any, selectedDate: any) => {
-        const currentDate = selectedDate || budget.fromDate
-        setBudget({ ...budget, fromDate: currentDate })
+        const currentDate = selectedDate || budget.startDate
+        setBudget({ ...budget, startDate: currentDate })
         setShowDatePicker(Platform.OS == 'ios' ? true : false)
     }
 
     const onSubmit = async () => {
-        const { category, amount, spent, fromDate, toDate } = budget
+        const { category, amount, spent, startDate, endDate } = budget
         
-        if (!category || !amount || !fromDate || !toDate) {
+        if (!category || !amount || !startDate || !endDate) {
             Alert.alert('Anggaran', 'Harap semua kolom diisi')
             return
         }
@@ -52,14 +57,14 @@ const budgetModal = () => {
             category,
             amount,
             spent,
-            fromDate,
-            toDate,
+            startDate,
+            endDate,
             uid: user?.uid
         }
 
 
         setLoading(true)
-        const res = await createBudget(budgetData)
+        const res = await createBudget(db, budgetData)
 
         setLoading(false)
         if (res.success) {
@@ -123,7 +128,7 @@ const budgetModal = () => {
                                 onPress={() => setShowDatePicker(true)}
                             >
                                 <Typo size={14}>
-                                    {(budget.fromDate as Date).toLocaleDateString()}
+                                    {(budget.startDate as Date).toLocaleDateString()}
                                 </Typo>
                             </Pressable>
                         )}
@@ -132,7 +137,7 @@ const budgetModal = () => {
                             <View style={Platform.OS == 'ios' && styles.iosDatePicker}>
                                 <DateTimePicker
                                     themeVariant='dark'
-                                    value={budget.fromDate as Date}
+                                    value={budget.startDate as Date}
                                     textColor={colors.white}
                                     mode='date'
                                     display={Platform.OS == 'ios' ? 'spinner' : 'default'}
@@ -163,13 +168,13 @@ const budgetModal = () => {
 
                                 setDuration(days);
 
-                                // Hitung `toDate` dari `fromDate`
-                                const newToDate = new Date(budget.fromDate);
+                                // Hitung `endDate` dari `startDate`
+                                const newToDate = new Date(budget.startDate);
                                 newToDate.setDate(newToDate.getDate() + days);
 
                                 setBudget({
                                     ...budget,
-                                    toDate: newToDate,
+                                    endDate: newToDate,
                                 });
                             }}
                         />

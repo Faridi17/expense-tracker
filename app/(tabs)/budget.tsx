@@ -1,6 +1,5 @@
 import { ScrollView, StyleSheet, View } from 'react-native'
 import React from 'react'
-import Typo from '@/components/Typo'
 import { scale, verticalScale } from '@/utils/styling'
 import { colors, spacingX, spacingY } from '@/constants/theme'
 import ScreenWrapper from '@/components/ScreenWrapper'
@@ -11,23 +10,18 @@ import { useRouter } from 'expo-router'
 import BudgetList from '@/components/BudgetList'
 import { BudgetType } from '@/types'
 import useFetchData from '@/hooks/useFetchData'
-import { orderBy, where } from 'firebase/firestore'
 import { useAuth } from '@/context/authContext'
 
 const budget = () => {
     const { user } = useAuth()
     const router = useRouter()
-    const queryConstraints = user?.uid
-        ? [
-            where('uid', '==', user.uid),
-            where('toDate', '>=', new Date()), 
-            orderBy('spent', 'asc') 
-        ]
-        : [];
-
-    const { data: recentBudget, loading: budgetLoading } = useFetchData<BudgetType>('budgets', queryConstraints);
-
-
+    const now = new Date().toISOString();
+    const { data: recentBudget, loading: budgetLoading } = useFetchData<BudgetType>(
+        "budgets",
+        user?.uid,
+        "AND endDate >= ?",
+        [now]
+    );
 
     return (
         <ScreenWrapper>

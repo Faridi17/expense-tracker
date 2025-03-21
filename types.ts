@@ -103,8 +103,8 @@ export type BudgetType = {
   category?: string;
   amount: number;
   spent: number;
-  fromDate: Date | Timestamp | string;
-  toDate: Date | Timestamp | string;
+  startDate: Date | Timestamp | string;
+  endDate: Date | Timestamp | string;
   uid?: string;
 }
 

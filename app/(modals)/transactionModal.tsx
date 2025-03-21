@@ -1,30 +1,29 @@
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { colors, radius, spacingX, spacingY } from '@/constants/theme'
 import { scale, verticalScale } from '@/utils/styling'
 import ModalWrapper from '@/components/ModalWrapper'
 import Header from '@/components/Header'
 import BackButton from '@/components/BackButton'
-import * as Icons from 'phosphor-react-native'
 import Typo from '@/components/Typo'
 import { TransactionType, WalletType } from '@/types'
 import Button from '@/components/Button'
 import { useAuth } from '@/context/authContext'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useRouter } from 'expo-router'
 import ImageUpload from '@/components/ImageUpload'
-import { deleteWallet } from '@/services/walletService'
 import { Dropdown } from 'react-native-element-dropdown';
 import { expenseCategories, transactionTypes } from '@/constants/data'
-import { orderBy, where } from 'firebase/firestore'
 import useFetchData from '@/hooks/useFetchData'
 import { formatRupiah } from '@/services/formatRupiah'
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Input from '@/components/Input'
-import { createOrUpdateTransaction } from '@/services/transactionService'
+import { createTransaction } from '@/services/transactionService'
+import { useSQLiteContext } from 'expo-sqlite'
 
 const TransactionModal = () => {
-    const { user } = useAuth()
-    const [loading, setLoading] = useState(false)
+    const db = useSQLiteContext();
+    const { user } = useAuth();
+    const [loading, setLoading] = useState(false);
     const [transaction, setTransaction] = useState<TransactionType>({
         type: 'expense',
         amount: 0,
@@ -33,15 +32,38 @@ const TransactionModal = () => {
         date: new Date(),
         walletId: '',
         image: null
-    })
-    const [showDatePicker, setShowDatePicker] = useState(false)
-    const router = useRouter()
-    const oldTransaction: { name: string; image: string; id: string } = useLocalSearchParams()
+    });
 
-    const { data: wallets } = useFetchData<WalletType>('wallets', [
-        where('uid', '==', user?.uid),
-        orderBy('created', 'desc')
-    ])
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [wallets, setWallets] = useState<WalletType[]>([]);
+    const router = useRouter();
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchWallets = async () => {
+            try {
+                const results = await db.getAllAsync(
+                    `SELECT * FROM wallets WHERE uid = ? ORDER BY createdAt DESC`,
+                    [user.uid]
+                );
+
+                if (isMounted) {
+                    setWallets(results as WalletType[]);
+                }
+            } catch (err) {
+                if (isMounted) {
+                    console.error("Error fetching wallets:", err);
+                }
+            }
+        };
+
+        fetchWallets();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [user.uid]);
 
     const onDateChange = (event: any, selectedDate: any) => {
         const currentDate = selectedDate || transaction.date
@@ -51,7 +73,7 @@ const TransactionModal = () => {
 
     const onSubmit = async () => {
         const { type, amount, description, category, date, walletId, image } = transaction
-        if(!walletId || !date || !amount || (type == 'expense' && !category)) {
+        if (!walletId || !date || !amount || (type == 'expense' && !category)) {
             Alert.alert('Transaksi', 'Harap semua kolom diisi')
             return
         }
@@ -67,57 +89,23 @@ const TransactionModal = () => {
             uid: user?.uid
         }
 
-        
-
         setLoading(true)
-        const res = await createOrUpdateTransaction(transactionData)
+        const res = await createTransaction(db, transactionData)
 
         setLoading(false)
-        if(res.success) {
+        if (res.success) {
             router.back()
         } else {
             Alert.alert('Transaksi', res.msg)
         }
-        
-    }
 
-    const onDelete = async () => {
-        if (!oldTransaction?.id) return
-        setLoading(true)
-        const res = await deleteWallet(oldTransaction?.id)
-        setLoading(false)
-
-        if (res.success) {
-            router.back()
-        } else {
-            Alert.alert('Wallet', res.msg)
-        }
-    }
-
-    const showDeleteAlert = () => {
-        Alert.alert(
-            'Konfirmasi',
-            'Apakah Anda yakin ingin melanjutkan? \nTindakan ini akan menghapus semua transaksi yang terkait dengan dompet ini',
-            [
-                {
-                    text: "Batal",
-                    onPress: () => console.log('Batalkan Penghapusan'),
-                    style: 'cancel',
-                },
-                {
-                    text: "Hapus",
-                    onPress: () => onDelete(),
-                    style: 'destructive',
-                },
-            ]
-        )
     }
 
     return (
         <ModalWrapper>
             <View style={styles.container}>
                 <Header
-                    title={oldTransaction?.id ? 'Ubah Transaksi' : 'Tambah Transaksi'}
+                    title='Tambah Transaksi'
                     leftIcon={<BackButton />}
                     style={{ marginBottom: spacingY._10 }}
                 />
@@ -298,26 +286,9 @@ const TransactionModal = () => {
             </View>
 
             <View style={styles.footer}>
-                {
-                    oldTransaction?.id && !loading && (
-                        <Button
-                            onPress={showDeleteAlert}
-                            style={{
-                                backgroundColor: colors.rose,
-                                paddingHorizontal: spacingX._15
-                            }}
-                        >
-                            <Icons.Trash
-                                color={colors.white}
-                                size={verticalScale(24)}
-                                weight='bold'
-                            />
-                        </Button>
-                    )
-                }
                 <Button onPress={onSubmit} loading={loading} style={{ flex: 1 }}>
                     <Typo color={colors.black} fontWeight={'700'}>
-                        {oldTransaction?.id ? 'Ubah' : 'Tambah'}
+                        Tambah
                     </Typo>
                 </Button>
             </View>

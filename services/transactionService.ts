@@ -1,153 +1,132 @@
-import { firestore } from "@/config/firebase";
 import { ResponseType, TransactionType, WalletType } from "@/types";
-import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
-import { uploadFileToCloudinary } from "./imageService";
+import { uploadFileToLocal } from "./imageService";
 import { Alert } from "react-native";
 import { expenseCategories } from "@/constants/data";
+import { SQLiteDatabase } from "expo-sqlite";
+import uuid from 'react-native-uuid';
 
-export const createOrUpdateTransaction = async (
+export const createTransaction = async (
+    db: SQLiteDatabase,
     transactionData: Partial<TransactionType>
 ): Promise<ResponseType> => {
+
     try {
-        const { id, type, walletId, amount, image } = transactionData
+        const { id, type, walletId, amount, image, category, uid, description } = transactionData;
         if (!amount || amount <= 0 || !walletId || !type) {
-            return { success: false, msg: 'Transaksi tidak valid' }
+            return { success: false, msg: "Transaksi tidak valid" };
         }
 
-        if (!id) {
-            const res = await updateWalletForNewTransaction(
-                walletId,
-                Number(amount!),
-                type
-            )
-            if (type === 'expense') {
-               const resBudget = await updateBudgetForNewTransaction(transactionData.uid!, transactionData.category!, Number(amount!), new Date());
-               
-               console.log(resBudget);
-            }
 
-            if (!res.success) return res
+        const res = await updateWalletForNewTransaction(db, walletId, Number(amount), type);
+        if (!res.success) return res;
+
+        if (type === "expense") {
+            await updateBudgetForNewTransaction(db, uid!, category!, Number(amount));
         }
-
 
         if (image) {
-            const imageUploadRes = await uploadFileToCloudinary(image, 'transactions')
+            const imageUploadRes = await uploadFileToLocal(image, "transactions");
             if (!imageUploadRes.success) {
-                return { success: false, msg: imageUploadRes.msg || 'Gagal menggunggah kuitansi' }
-
+                return { success: false, msg: imageUploadRes.msg || "Gagal menggunggah kuitansi" };
             }
-            transactionData.image = imageUploadRes.data
-        }
-        const transactionRef = id
-            ? doc(firestore, 'transactions', id)
-            : doc(collection(firestore, 'transactions'))
-
-        await setDoc(transactionRef, transactionData, { merge: true })
-
-        return { success: true, data: { ...transactionData, id: transactionRef.id } }
-    } catch (err: any) {
-        console.log('error creating or updating transaction', err);
-        return { success: false, msg: err.message }
-
-    }
-}
-
-const updateWalletForNewTransaction = async (
-    walletId: string,
-    amount: number,
-    type: string
-) => {
-    try {
-        const walletRef = doc(firestore, 'wallets', walletId)
-        const walletSnapshot = await getDoc(walletRef)
-        if (!walletSnapshot.exists()) {
-            console.log('error updating wallet for new transaction');
-            return { success: false, msg: 'Dompet tidak ditemukan' }
+            transactionData.image = imageUploadRes.data;
         }
 
-        const walletData = walletSnapshot.data() as WalletType
-
-        if (type == 'expense' && walletData.amount! - amount < 0) {
-            return { success: false, msg: 'Dompet yang dipilih tidak memiliki saldo yang cukup' }
-        }
-
-        const updateType = type == 'income' ? 'totalIncome' : 'totalExpenses'
-        const updatedWalletAmount =
-            type == 'income'
-                ? Number(walletData.amount) + amount
-                : Number(walletData.amount) - amount
-
-        const updatedTotals = type == 'income'
-            ? Number(walletData.totalIncome) + amount
-            : Number(walletData.totalExpenses) + amount
-
-        await updateDoc(walletRef, {
-            amount: updatedWalletAmount,
-            [updateType]: updatedTotals
-        })
-
-        return { success: true }
-    } catch (err: any) {
-        console.log('error updating transaction for new transaction', err);
-        return { success: false, msg: err.message }
-
-    }
-}
-
-const updateBudgetForNewTransaction = async (
-    uid: string,
-    category: string,
-    amount: number,
-    date: Date
-) => {
-    try {
-        const budgetsRef = collection(firestore, 'budgets');
-
-        // Cari budget berdasarkan UID, kategori, dan rentang tanggal
-        const q = query(
-            budgetsRef,
-            where('uid', '==', uid),
-            where('category', '==', category),
-            where('fromDate', '<=', date),
-            where('toDate', '>=', date)
+        const transcationId = uuid.v4();
+        await db.runAsync(
+            `INSERT INTO transactions (id, walletId, amount, type, image, category, description, uid) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [transcationId, walletId, amount, type, transactionData.image, category, description, uid]
         );
 
-        const budgetSnapshot = await getDocs(q);
 
-        if (budgetSnapshot.empty) {
-            return { success: false, msg: 'Tidak ada anggaran yang sesuai' };
-        }
-
-        // Update spent pada semua budget yang cocok
-        const batchUpdates = budgetSnapshot.docs.map(async (budgetDoc) => {
-            const budgetData = budgetDoc.data();
-            const newSpent = (budgetData.spent || 0) + amount;
-            const budgetLimit = budgetData.amount || 0;
-      
-            await updateDoc(doc(firestore, 'budgets', budgetDoc.id), {
-              spent: newSpent,
-            });
-      
-            // Cek jika pengeluaran melebihi 90% dari total anggaran
-            if (budgetLimit > 0 && newSpent / budgetLimit >= 0.9) {
-              // Gunakan label kategori dari expenseCategories, jika ada
-              const categoryLabel = expenseCategories[category]?.label || category;
-      
-              Alert.alert(
-                'Peringatan Anggaran!',
-                `Pengeluaran untuk kategori ${categoryLabel} telah mencapai ${Math.round(
-                  (newSpent / budgetLimit) * 100
-                )}% dari batas anggaran.`,
-                [{ text: 'OK' }]
-              );
-            }
-          });
-
-        await Promise.all(batchUpdates);
-
-        return { success: true };
+        return { success: true, data: { ...transactionData, id } };
     } catch (err: any) {
-        console.log('error updating budget for new transaction', err);
+        console.error("Error saat menyimpan transaksi:", err);
         return { success: false, msg: err.message };
     }
 };
+
+const updateWalletForNewTransaction = async (
+    db: SQLiteDatabase,
+    walletId: string,
+    amount: number,
+    type: string
+): Promise<ResponseType> => {
+    try {
+        const wallet = await db.getFirstAsync<WalletType>("SELECT * FROM wallets WHERE id = ?", [walletId]);
+        if (!wallet) {
+            console.log("Dompet tidak ditemukan");
+            return { success: false, msg: "Dompet tidak ditemukan" };
+        }
+
+        if (type === "expense" && wallet.amount - amount < 0) {
+            return { success: false, msg: "Saldo tidak mencukupi" };
+        }
+
+        const updatedAmount = type === "income" ? wallet.amount + amount : wallet.amount - amount;
+        const updateField = type === "income" ? "totalIncome" : "totalExpenses";
+        const updatedTotals = wallet[updateField] + amount;
+
+        await db.runAsync(
+            `UPDATE wallets 
+             SET amount = ?, ${updateField} = ? 
+             WHERE id = ?`,
+            [updatedAmount, updatedTotals, walletId]
+        );
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("Error saat memperbarui dompet:", err);
+        return { success: false, msg: err.message };
+    }
+};
+
+const updateBudgetForNewTransaction = async (
+    db: SQLiteDatabase,
+    uid: string,
+    category: string,
+    amount: number
+): Promise<ResponseType> => {
+    try {
+        const currentDateTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+        const budgets = await db.getFirstAsync(
+            `SELECT * FROM budgets 
+             WHERE uid = ? AND category = ? 
+             AND startDate <= ? AND endDate >= ?`,
+            [uid, category, currentDateTime, currentDateTime]
+        );
+
+        if (!budgets) {
+            return { success: false, msg: "Tidak ada anggaran yang sesuai" };
+        }
+
+        const newSpent = (budgets.spent || 0) + amount;
+        const budgetLimit = budgets.amount || 0;
+
+        await db.runAsync(
+            `UPDATE budgets 
+             SET spent = ? 
+             WHERE id = ?`,
+            [newSpent, budgets.id]
+        );
+
+        if (budgetLimit > 0 && newSpent / budgetLimit >= 0.9) {
+            const categoryLabel = expenseCategories[category]?.label || category;
+            Alert.alert(
+                "Peringatan Anggaran!",
+                `Pengeluaran untuk kategori ${categoryLabel} telah mencapai ${Math.round(
+                    (newSpent / budgetLimit) * 100
+                )}% dari batas anggaran.`,
+                [{ text: "OK" }]
+            );
+        }
+
+        return { success: true };
+    } catch (err: any) {
+        console.error("Error saat memperbarui anggaran:", err);
+        return { success: false, msg: err.message };
+    }
+};
+

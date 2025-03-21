@@ -16,8 +16,10 @@ import { useAuth } from '@/context/authContext'
 import { updateUser } from '@/services/userService'
 import { useRouter } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
+import { useSQLiteContext } from 'expo-sqlite'
 
 const ProfileModal = () => {
+    const db = useSQLiteContext()
     const { user, updateUserData } = useAuth()
     const [loading, setLoading] = useState(false)
     const [userData, setUserData] = useState<UserDataType>({
@@ -60,7 +62,7 @@ const ProfileModal = () => {
         }
 
         setLoading(true)
-        const res = await updateUser(user?.uid as string, userData)
+        const res = await updateUser(db, user?.uid as string, userData)
         setLoading(false)
 
         if (res.success) {

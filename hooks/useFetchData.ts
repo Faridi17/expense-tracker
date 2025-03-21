@@ -1,42 +1,32 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { collection, doc, onSnapshot, query, QueryConstraint } from 'firebase/firestore'
-import { firestore } from '@/config/firebase'
+import { useEffect, useState } from "react";
+import { useSQLiteContext } from "expo-sqlite";
 
-const useFetchData = <T>(
-    collectionName: string,
-    constraints: QueryConstraint[] = []
-) => {
-    const [data, setData] = useState<T[]>([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
+const useFetchData = <T>(tableName: string, uid: string, extraConditions: string = "", params: any[] = []) => {
+    const db = useSQLiteContext(); 
+    const [data, setData] = useState<T[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if(!collectionName) return
-        const collectionRef = collection(firestore, collectionName)
-        const q = query(collectionRef, ...constraints)
+        if (!tableName || !uid) return;
 
-        const unsub = onSnapshot(q, (snapshot) => {
-            const fetchedData = snapshot.docs.map(doc => {
-                return {
-                    id: doc.id,
-                    ...doc.data()
-                }
-            }) as T[]
-            setData(fetchedData)
-            setLoading(false)
-        }, (err) => {
-            console.log('Error fetching data: ', err);
-            setError(err.message)
-            setLoading(false)
-            
-        })
-        return () => unsub()
-    }, [])
+        const fetchData = async () => {
+            try {
+                const query = `SELECT * FROM ${tableName} WHERE uid = ? ${extraConditions} ORDER BY createdAt DESC`;
+                const results = await db.getAllAsync(query, [uid, ...params]);
+                setData(results as T[]);
+            } catch (err) {
+                console.log("Error fetching data:", err);
+                setError((err as Error).message);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    return { data, loading, error }
-}
+        fetchData();
+    }, [tableName, uid, extraConditions, params]);
 
-export default useFetchData
+    return { data, loading, error };
+};
 
-const styles = StyleSheet.create({})
+export default useFetchData;

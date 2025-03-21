@@ -1,46 +1,77 @@
-import { auth, firestore } from "@/config/firebase";
-import { AuthContextType, UserType } from "@/types";
-import { useRouter } from "expo-router";
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { AuthContextType, UserType } from "@/types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import uuid from 'react-native-uuid';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<UserType>(null);
+    const [user, setUser] = useState<UserType | null>(null);
     const router = useRouter();
-    
-    useEffect(() => {
-        const unsub = onAuthStateChanged(auth, (firebaseUser) => {
-            if (firebaseUser) {
-                setUser({
-                    uid: firebaseUser?.uid,
-                    email: firebaseUser?.email,
-                    name: firebaseUser?.displayName,
-                });
-                updateUserData(firebaseUser.uid);
-                router.replace("/(tabs)");
-            } else {
-                setUser(null);
-                router.replace("/(auth)/welcome");
-            }
-        });
+    const db = useSQLiteContext();
 
-        return () => unsub();
+    useEffect(() => {
+        checkUserSession();
     }, []);
- 
-    const login = async (email: string, password: string) => {
+    
+    const checkUserSession = async () => {
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            return { success: true };
-        } catch (error: any) {
-            let msg = error.message;
-            if (msg.includes("(auth/invalid-credential)")) msg = "Login gagal";
-            if (msg.includes("(auth/invalid-email)")) msg = "Email salah";
-            return { success: false, msg };
+            const uid = await AsyncStorage.getItem("user_id"); 
+            if (uid) {
+                updateUserData(uid)
+                
+                router.replace("/(tabs)");
+                return;
+            }
+            router.replace("/(auth)/welcome");
+        } catch (error) {
+            console.log("Error checking session:", error);
         }
     };
+
+    const login = async (email: string, password: string) => {
+        try {
+            const user = await db.getFirstAsync("SELECT * FROM users WHERE email = ? AND password = ?", [email, password]);
+
+            if (user) {
+                await AsyncStorage.setItem("user_id", user.uid);
+                router.replace("/(tabs)");
+                return { success: true };
+            } else {
+                return { success: false, msg: "Email atau password salah" };
+            }
+        } catch (error) {
+            console.log("Login error:", error);
+            return { success: false, msg: "Terjadi kesalahan saat login" };
+        }
+    };
+
+    const updateUserData = async (uid: string) => {
+        try {
+            const user = await db.getFirstAsync("SELECT * FROM users WHERE uid = ?", [uid]);        
+                
+    
+            if (user) {
+                const userData: UserType = {
+                    uid: user.uid,
+                    email: user.email || null,
+                    name: user.name || null,
+                    phone: user.phone || null,
+                    profession: user.profession || null,
+                    gender: user.gender || null,
+                    address: user.address || null,
+                    image: user.image || null,
+                };
+                setUser({ ...userData });
+                
+            }
+        } catch (error) {
+            console.log("Error updating user data:", error);
+        }
+    };
+    
 
     const register = async (
         email: string,
@@ -52,47 +83,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         address: string
     ) => {
         try {
-            let response = await createUserWithEmailAndPassword(auth, email, password);
-            await setDoc(doc(firestore, "users", response?.user?.uid), {
-                name,
-                email,
-                uid: response?.user?.uid,
-                phone,
-                profession,
-                gender,
-                address,
-            });
-            return { success: true };
-        } catch (error: any) {
-            let msg = error.message;
-            if (msg.includes("(auth/email-already-in-use)")) msg = "Email sudah digunakan";
-            if (msg.includes("(auth/weak-password)")) msg = "Password minimal 6 karakter";
-            if (msg.includes("(auth/invalid-email)")) msg = "Email salah";
-            return { success: false, msg };
-        }
-    };
+            const existingUser = await db.getFirstAsync("SELECT * FROM users WHERE email = ?", [email]);
 
-    const updateUserData = async (uid: string) => {
-        try {
-            const docRef = doc(firestore, "users", uid);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                const userData: UserType = {
-                    uid: data?.uid,
-                    email: data.email || null,
-                    name: data.name || null,
-                    phone: data.phone || null,
-                    profession: data.profession || null,
-                    gender: data.gender || null,
-                    address: data.address || null,
-                    image: data.image || null,
-                };
-                setUser({ ...userData });
+            if (existingUser) {
+                return { success: false, msg: "Email sudah digunakan" };
             }
-        } catch (error: any) {
-            console.log("error: ", error);
+
+            const uid = uuid.v4(); 
+
+            await db.runAsync(
+                "INSERT INTO users (uid, email, password, name, phone, profession, gender, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+                [uid, email, password, name, phone, profession, gender, address]
+            );
+
+           await db.getFirstAsync("SELECT * FROM users WHERE email = ?", [email]);
+            
+
+            router.replace("/(auth)/login");
+            return { success: true };
+        } catch (error) {
+            console.log("Register error:", error);
+            return { success: false, msg: "Terjadi kesalahan saat registrasi" };
         }
     };
 
@@ -101,14 +112,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser,
         login,
         register,
-        updateUserData,
+        updateUserData
     };
 
     return (
         <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
-    );
+    )
 };
 
 export const useAuth = (): AuthContextType => {
