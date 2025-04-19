@@ -61,9 +61,11 @@ const TransactionModal = () => {
 
         const fetchGoals = async () => {
             try {
+                const now = new Date().toISOString();
+
                 const results = await db.getAllAsync(
-                    `SELECT * FROM goals WHERE uid = ? ORDER BY createdAt DESC`,
-                    [user.uid]
+                    `SELECT * FROM goals WHERE uid = ? AND endDate >= ? ORDER BY createdAt DESC`,
+                    [user.uid, now]
                 );
 
                 if (isMounted) {
@@ -201,7 +203,7 @@ const TransactionModal = () => {
                                 data={goals.map((goal) => ({
                                     label: `${goal?.name} (${formatRupiah(goal?.collected as number)})`,
                                     value: goal?.id,
-                                    description: goal?.name 
+                                    description: goal?.name
                                 }))}
                                 maxHeight={300}
                                 labelField="label"
@@ -215,7 +217,7 @@ const TransactionModal = () => {
                                     setTransaction({
                                         ...transaction,
                                         goalId: item.value || '',
-                                        description: item.description 
+                                        description: item.description
                                     })
                                 }}
                             />
