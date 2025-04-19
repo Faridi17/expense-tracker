@@ -1,74 +1,116 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native'
+import React from 'react'
+import Typo from '@/components/Typo'
+import ScreenWrapper from '@/components/ScreenWrapper'
+import { colors, spacingX, spacingY } from '@/constants/theme'
+import { verticalScale } from '@/utils/styling'
+import { useAuth } from '@/context/authContext'
+import * as Icons from 'phosphor-react-native'
+import HomeCard from '@/components/HomeCard'
+import TransactionList from '@/components/TransactionList'
+import Button from '@/components/Button'
+import { useRouter } from 'expo-router'
+import useFetchData from '@/hooks/useFetchData'
+import { TransactionType } from '@/types'
+import { Image } from 'expo-image'
+import { getProfileImage } from '@/services/imageService'
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const Home = () => {
+    const { user } = useAuth()    
+    const router = useRouter()
+    const { data: recentTransaction, loading: transactionLoading } = useFetchData<TransactionType>("transactions", user?.uid);    
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+    return (
+        <ScreenWrapper>
+            <View style={styles.container}>
+                {/* header */}
+                <View style={styles.header}>
+                    <View style={{ gap: 4 }}>
+                        <Typo size={16} color={colors.neutral400}>
+                            Halo,
+                        </Typo>
+                        <Typo>
+                            {user?.name}
+                        </Typo>
+                    </View>
+                    <View style={styles.avatarContainer}>
+                        <Image
+                            style={styles.avatar}
+                            source={getProfileImage(user?.image)}
+                            contentFit='cover'
+                            transition={100}
+                        />
+                    </View>
+                </View>
+
+                <ScrollView
+                    contentContainerStyle={styles.scrollViewStyle}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* card */}
+                    <View>
+                        <HomeCard />
+                    </View>
+
+                    <TransactionList
+                        data={recentTransaction}
+                        loading={transactionLoading}
+                        emptyListMessage='Belum ada Transaksi'
+                        title='Transaksi Terbaru'
+                    />
+                </ScrollView>
+
+                <Button style={styles.floatingButton} onPress={() => router.push('/(modals)/transactionModal')}>
+                    <Icons.Plus
+                        color={colors.black}
+                        weight='bold'
+                        size={verticalScale(24)}
+                    />
+                </Button>
+            </View>
+        </ScreenWrapper>
+    )
 }
 
+export default Home
+
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+    container: {
+        flex: 1,
+        paddingHorizontal: spacingX._20,
+        marginTop: verticalScale(8)
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacingY._10
+    },
+    floatingButton: {
+        height: verticalScale(50),
+        width: verticalScale(50),
+        borderRadius: 100,
+        position: 'absolute',
+        bottom: verticalScale(30),
+        right: verticalScale(30)
+    },
+    scrollViewStyle: {
+        marginTop: spacingY._10,
+        paddingBottom: verticalScale(100),
+        gap: spacingY._25
+    },
+    avatar: {
+        alignSelf: "center",
+        backgroundColor: colors.neutral300,
+        height: verticalScale(40),
+        width: verticalScale(40),
+        borderRadius: 200,
+        borderWidth: 1,
+        borderColor: colors.neutral500
+    },
+    avatarContainer: {
+        marginRight: verticalScale(5),
+        position: "relative",
+        alignSelf: "center",
+    }
+})
