@@ -24,7 +24,7 @@ const Home = () => {
         : [];
 
     const { data: recentTransaction, loading: transactionLoading } = useFetchData<TransactionType>('transactions', queryConstraints);
-
+    
     return (
         <ScreenWrapper>
             <View style={styles.container}>

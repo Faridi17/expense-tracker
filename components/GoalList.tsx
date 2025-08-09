@@ -5,18 +5,20 @@ import { View, StyleSheet } from 'react-native';
 import Typo from './Typo';
 import { verticalScale } from '@/utils/styling';
 import Loading from './Loading';
-import { BudgetItemProps, BudgetListType } from '@/types';
-import { expenseCategories } from '@/constants/data';
-import ProgressBar from "react-native-progress/Bar";
+import { GoalItemProps, GoalListType } from '@/types';
+import ProgressBar from 'react-native-progress/Bar'
 import { formatRupiah } from '@/services/formatRupiah';
 
-const BudgetList = ({ data, loading, emptyListMessage }: BudgetListType) => {
+const GoalList = ({ data, loading, emptyListMessage }: GoalListType) => {
     return (
-        <View style={styles.container}>
+        <View style={{ gap: spacingY._15}}>
+            <Typo size={20} fontWeight={'500'}>
+                List Perencanaan
+            </Typo>
             <View style={styles.list}>
                 <FlashList
                     data={data}
-                    renderItem={({ item, index }) => <BudgetItem item={item} index={index} />}
+                    renderItem={({ item, index }) => <GoalItem item={item} index={index} />}
                     estimatedItemSize={60}
                 />
             </View>
@@ -41,53 +43,38 @@ const BudgetList = ({ data, loading, emptyListMessage }: BudgetListType) => {
     );
 };
 
-const BudgetItem = ({ item, index }: BudgetItemProps) => {
-    let category = expenseCategories[item.category!]
-    const IconComponent = category.icon
+const GoalItem = ({ item, index }: GoalItemProps) => {
     const dateNow = new Date();
-    const toDate = item.toDate.toDate();
-    const diffTime = toDate.getTime() - dateNow.getTime();
+    const endDate = item.endDate.toDate();
+    const diffTime = endDate.getTime() - dateNow.getTime();
     const remainingDay = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-    const progress = Math.min(item.spent / item.amount, 1);
+    const progress = Math.min(item.collected / item.target, 1);
 
     const percentage = Math.round(progress * 100);
-    const remainingBudget = item.amount - item.spent;
     const progressColor =
-        percentage > 90 ? colors.rose :
+        percentage > 90 ? colors.primary :
             percentage > 50 ? colors.yellow :
-                colors.primary;
-
+                colors.rose;
 
     return (
         <View style={styles.container}>
             <View style={styles.column}>
                 {/* Header */}
                 <View style={styles.row}>
-                    <View style={[styles.icon, { backgroundColor: category.bgColor }]}>
-                        {IconComponent && (
-                            <IconComponent
-                                size={verticalScale(25)}
-                                weight="fill"
-                                color={colors.white}
-                            />
-                        )}
-                    </View>
                     <View style={styles.categoryDes}>
-                        <Typo size={16} fontWeight="600">{category.label}</Typo>
-                        <Typo size={12} color={colors.neutral400}>Anggaran</Typo>
+                        <Typo size={16} fontWeight="600">{item.name}</Typo>
+                        <Typo size={12} color={colors.neutral400}>Deksripsi</Typo>
                     </View>
                     <View style={styles.remaining}>
-                        <Typo size={12} color={colors.neutral400}>sisa</Typo>
+                        <Typo size={12} color={colors.neutral400}>Terkumpul</Typo>
                         <Typo size={16} color={progressColor}>
-                            {remainingBudget > 0 ? formatRupiah(remainingBudget) : 'Habis'}
+                            {formatRupiah(item.collected)}
                         </Typo>
                     </View>
                 </View>
 
-
                 {/* Progress Bar */}
                 <View style={styles.progressContainer}>
-
                     <ProgressBar
                         progress={progress}
                         width={300}
@@ -102,28 +89,27 @@ const BudgetItem = ({ item, index }: BudgetItemProps) => {
                             {percentage}%
                         </Typo>
                     </View>
-
                 </View>
 
                 {/* Budget Info */}
                 <View style={styles.budgetInfo}>
                     <View style={styles.budgetItem}>
-                        <Typo size={12} color={colors.neutral400}>Total</Typo>
+                        <Typo size={12} color={colors.neutral400}>Target</Typo>
                         <Typo size={16} color={colors.neutral300}>
-                            {formatRupiah(item.amount)}
+                            {formatRupiah(item.target)}
                         </Typo>
                     </View>
                     <View style={styles.budgetItem}>
                         <Typo size={12} color={colors.neutral400}>{remainingDay} Hari</Typo>
-                        
                     </View>
                 </View>
             </View>
         </View>
     );
-}
+};
 
-export default BudgetList;
+
+export default GoalList;
 
 const styles = StyleSheet.create({
     container: {

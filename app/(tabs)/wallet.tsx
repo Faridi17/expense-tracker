@@ -28,6 +28,7 @@ const Wallet = () => {
       ]);
     }
   }, [user?.uid]);
+  
 
   const getTotalBalance = () => 
     wallets.reduce((total, item) => {

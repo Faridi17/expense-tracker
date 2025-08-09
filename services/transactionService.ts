@@ -1,5 +1,5 @@
 import { firestore } from "@/config/firebase";
-import { ResponseType, TransactionType, WalletType } from "@/types";
+import { GoalType, ResponseType, TransactionType, WalletType } from "@/types";
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { uploadFileToCloudinary } from "./imageService";
 import { Alert } from "react-native";
@@ -20,10 +20,13 @@ export const createOrUpdateTransaction = async (
                 Number(amount!),
                 type
             )
+
             if (type === 'expense') {
-               const resBudget = await updateBudgetForNewTransaction(transactionData.uid!, transactionData.category!, Number(amount!), new Date());
-               
-               console.log(resBudget);
+                await updateBudgetForNewTransaction(transactionData.uid!, transactionData.category!, Number(amount!), new Date());
+            }
+
+            if (type === "goal") {
+                await updateGoalForNewTransaction(transactionData.uid!, transactionData.goalId!, Number(amount!));
             }
 
             if (!res.success) return res
@@ -123,31 +126,60 @@ const updateBudgetForNewTransaction = async (
             const budgetData = budgetDoc.data();
             const newSpent = (budgetData.spent || 0) + amount;
             const budgetLimit = budgetData.amount || 0;
-      
+
             await updateDoc(doc(firestore, 'budgets', budgetDoc.id), {
-              spent: newSpent,
+                spent: newSpent,
             });
-      
+
             // Cek jika pengeluaran melebihi 90% dari total anggaran
             if (budgetLimit > 0 && newSpent / budgetLimit >= 0.9) {
-              // Gunakan label kategori dari expenseCategories, jika ada
-              const categoryLabel = expenseCategories[category]?.label || category;
-      
-              Alert.alert(
-                'Peringatan Anggaran!',
-                `Pengeluaran untuk kategori ${categoryLabel} telah mencapai ${Math.round(
-                  (newSpent / budgetLimit) * 100
-                )}% dari batas anggaran.`,
-                [{ text: 'OK' }]
-              );
+                // Gunakan label kategori dari expenseCategories, jika ada
+                const categoryLabel = expenseCategories[category]?.label || category;
+
+                Alert.alert(
+                    'Peringatan Anggaran!',
+                    `Pengeluaran untuk kategori ${categoryLabel} telah mencapai ${Math.round(
+                        (newSpent / budgetLimit) * 100
+                    )}% dari batas anggaran.`,
+                    [{ text: 'OK' }]
+                );
             }
-          });
+        });
 
         await Promise.all(batchUpdates);
 
         return { success: true };
     } catch (err: any) {
         console.log('error updating budget for new transaction', err);
+        return { success: false, msg: err.message };
+    }
+};
+
+const updateGoalForNewTransaction = async (
+    uid: string,
+    goalId: string,
+    amount: number
+): Promise<ResponseType> => {
+
+    try {
+        const goalRef = doc(firestore, 'goals', goalId);
+
+        const goalSnap = await getDoc(goalRef);
+
+        if (!goalSnap.exists()) {
+            return { success: false, msg: "Goal tidak ditemukan" };
+        }
+
+        const existingGoal = goalSnap.data() as GoalType;
+        const updatedCollected = (existingGoal.collected || 0) + amount;
+
+        // Update field 'collected'
+        await updateDoc(goalRef, {
+            collected: updatedCollected
+        });
+        return { success: true };
+    } catch (err: any) {
+        console.error("Error saat memperbarui perencanaan:", err);
         return { success: false, msg: err.message };
     }
 };

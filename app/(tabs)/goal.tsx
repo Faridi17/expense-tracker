@@ -1,50 +1,65 @@
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { View, StyleSheet, ScrollView } from 'react-native'
 import React from 'react'
-import { scale, verticalScale } from '@/utils/styling'
-import { colors, spacingX, spacingY } from '@/constants/theme'
 import ScreenWrapper from '@/components/ScreenWrapper'
-import Header from '@/components/Header'
 import Button from '@/components/Button'
+import Header from '@/components/Header'
+import { colors, spacingX, spacingY } from '@/constants/theme'
+import { scale, verticalScale } from '@/utils/styling'
 import * as Icons from 'phosphor-react-native'
-import { useRouter } from 'expo-router'
-import BudgetList from '@/components/BudgetList'
-import { BudgetType } from '@/types'
-import useFetchData from '@/hooks/useFetchData'
-import { orderBy, where } from 'firebase/firestore'
 import { useAuth } from '@/context/authContext'
+import { useRouter } from 'expo-router'
+import useFetchData from '@/hooks/useFetchData'
+import { GoalType } from '@/types'
+import GoalList from '@/components/GoalList'
+import SemiCircleProgressBar from '@/components/SemiCircleProgressBar'
+import { orderBy, where } from 'firebase/firestore'
 
-const budget = () => {
+const goal = () => {
     const { user } = useAuth()
     const router = useRouter()
     const queryConstraints = user?.uid
         ? [
             where('uid', '==', user.uid),
-            where('toDate', '>=', new Date()), 
-            orderBy('spent', 'asc') 
+            where('endDate', '>=', new Date()), 
+            orderBy('collected', 'asc') 
         ]
         : [];
 
-    const { data: recentBudget, loading: budgetLoading } = useFetchData<BudgetType>('budgets', queryConstraints);
+    const { data: recentGoal, loading: goalLoading } = useFetchData<GoalType>('goals', queryConstraints);
 
+    
+
+    // Hitung total progress
+    const totalCollected = recentGoal?.reduce((sum, goal) => {
+        const capped = Math.min(goal.collected, goal.target);
+        return sum + capped;
+    }, 0) ?? 0;
+
+    const totalTarget = recentGoal?.reduce((sum, goal) => sum + goal.target, 0) ?? 0;
+
+    const totalProgress = totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : 0;
+    
     return (
         <ScreenWrapper>
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <Header title='Anggaran' />
+                    <Header title='Perencanaan' />
                 </View>
                 <ScrollView
                     contentContainerStyle={styles.scrollViewStyle}
                     showsVerticalScrollIndicator={false}
                 >
+                    <View style={styles.progressContainer}>
+                        <SemiCircleProgressBar progress={totalProgress} />
+                    </View>
 
-                    <BudgetList
-                        data={recentBudget}
-                        loading={budgetLoading}
-                        emptyListMessage='Belum ada Transaksi'
-
+                    <GoalList
+                        data={recentGoal}
+                        loading={goalLoading}
+                        emptyListMessage='Belum ada Perencanaan'
                     />
                 </ScrollView>
-                <Button style={styles.floatingButton} onPress={() => router.push('/(modals)/budgetModal')}>
+                <Button style={styles.floatingButton} onPress={() => router.push('/(modals)/goalModal')}>
                     <Icons.Plus
                         color={colors.black}
                         weight='bold'
@@ -56,7 +71,7 @@ const budget = () => {
     )
 }
 
-export default budget
+export default goal;
 
 const styles = StyleSheet.create({
     footer: {
@@ -80,9 +95,13 @@ const styles = StyleSheet.create({
         gap: spacingY._10
     },
     scrollViewStyle: {
-        marginTop: spacingY._10,
+        marginTop: spacingY._25,
         paddingBottom: verticalScale(100),
-        gap: spacingY._25
+    },
+    progressContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: spacingY._40
     },
     floatingButton: {
         height: verticalScale(50),

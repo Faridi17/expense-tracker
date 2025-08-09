@@ -12,27 +12,28 @@ const useFetchData = <T>(
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        if(!collectionName) return
+        if (!collectionName) return
+        if (!constraints || constraints.length === 0) return // filter belum siap
+
         const collectionRef = collection(firestore, collectionName)
         const q = query(collectionRef, ...constraints)
 
         const unsub = onSnapshot(q, (snapshot) => {
-            const fetchedData = snapshot.docs.map(doc => {
-                return {
-                    id: doc.id,
-                    ...doc.data()
-                }
-            }) as T[]
+            const fetchedData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as T[]
             setData(fetchedData)
             setLoading(false)
         }, (err) => {
-            console.log('Error fetching data: ', err);
+            console.log('Error fetching data: ', err)
             setError(err.message)
             setLoading(false)
-            
         })
+
         return () => unsub()
-    }, [])
+    }, [collectionName, constraints])
+
 
     return { data, loading, error }
 }

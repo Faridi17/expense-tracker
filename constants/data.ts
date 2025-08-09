@@ -84,9 +84,17 @@ export const incomeCategory: CategoryType = {
   bgColor: "#16a34a", // Dark
 };
 
+export const goalCategory: CategoryType = {
+  label: "Perencanaan",
+  value: "goal",
+  icon: Icons.PiggyBank,
+  bgColor: "#6D28D9", // Dark
+};
+
 export const transactionTypes = [
   { label: "Pengeluaran", value: "expense" },
   { label: "Pemasukan", value: "income" },
+  { label: "Perencanaan", value: "goal" },
 ];
 export const genderTypes = [
   { label: "Laki-laki", value: "man" },

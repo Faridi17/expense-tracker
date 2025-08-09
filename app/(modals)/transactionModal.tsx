@@ -7,7 +7,7 @@ import Header from '@/components/Header'
 import BackButton from '@/components/BackButton'
 import * as Icons from 'phosphor-react-native'
 import Typo from '@/components/Typo'
-import { TransactionType, WalletType } from '@/types'
+import { GoalType, TransactionType, WalletType } from '@/types'
 import Button from '@/components/Button'
 import { useAuth } from '@/context/authContext'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -32,6 +32,7 @@ const TransactionModal = () => {
         category: '',
         date: new Date(),
         walletId: '',
+        goalId: '',
         image: null
     })
     const [showDatePicker, setShowDatePicker] = useState(false)
@@ -43,6 +44,12 @@ const TransactionModal = () => {
         orderBy('created', 'desc')
     ])
 
+    const { data: goals } = useFetchData<GoalType>('goals', [
+        where('uid', '==', user?.uid),
+        orderBy('collected', 'desc')
+    ])
+    
+
     const onDateChange = (event: any, selectedDate: any) => {
         const currentDate = selectedDate || transaction.date
         setTransaction({ ...transaction, date: currentDate })
@@ -50,7 +57,7 @@ const TransactionModal = () => {
     }
 
     const onSubmit = async () => {
-        const { type, amount, description, category, date, walletId, image } = transaction
+        const { type, amount, description, category, date, walletId, goalId, image } = transaction
         if(!walletId || !date || !amount || (type == 'expense' && !category)) {
             Alert.alert('Transaksi', 'Harap semua kolom diisi')
             return
@@ -63,6 +70,7 @@ const TransactionModal = () => {
             category,
             date,
             walletId,
+            goalId,
             image,
             uid: user?.uid
         }
@@ -134,7 +142,7 @@ const TransactionModal = () => {
                             style={styles.dropdownContainer}
                             selectedTextStyle={styles.dropdownSelectedText}
                             iconStyle={styles.dropdownIcon}
-                            data={transactionTypes}
+                            data={transactionTypes} 
                             maxHeight={300}
                             labelField="label"
                             valueField="value"
@@ -175,6 +183,41 @@ const TransactionModal = () => {
                             }}
                         />
                     </View>
+
+                     {/* goal list */}
+                    {transaction.type == 'goal' && (
+                        <View style={styles.inputContainer}>
+                            <Typo color={colors.neutral200} size={16}>Rencana</Typo>
+                            <Dropdown
+                                showsVerticalScrollIndicator={false}
+                                activeColor={colors.neutral700}
+                                style={styles.dropdownContainer}
+                                placeholderStyle={styles.dropdownPlaceholder}
+                                selectedTextStyle={styles.dropdownSelectedText}
+                                iconStyle={styles.dropdownIcon}
+                                data={goals.map((goal) => ({
+                                    label: `${goal?.name} (${formatRupiah(goal?.collected as number)})`,
+                                    value: goal?.id,
+                                    description: goal?.name
+                                }))}
+                                maxHeight={300}
+                                labelField="label"
+                                valueField="value"
+                                itemTextStyle={styles.dropdownItemText}
+                                itemContainerStyle={styles.dropdownItemContainer}
+                                containerStyle={styles.dropdownListContainer}
+                                placeholder={'Pilih perencanaan'}
+                                value={transaction.goalId}
+                                onChange={item => {
+                                    setTransaction({
+                                        ...transaction,
+                                        goalId: item.value || '',
+                                        description: item.description
+                                    })
+                                }}
+                            />
+                        </View>
+                    )}
 
                     {/* expense category */}
                     {transaction.type == 'expense' && (

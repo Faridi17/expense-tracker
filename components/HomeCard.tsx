@@ -14,6 +14,7 @@ const HomeCard = () => {
     const { user } = useAuth()
     const [queryFilters, setQueryFilters] = useState<any[]>([]);
     const { data: wallets, loading: walletLoading } = useFetchData<WalletType>('wallets', queryFilters);
+    
 
     useEffect(() => {
         if (user?.uid) {

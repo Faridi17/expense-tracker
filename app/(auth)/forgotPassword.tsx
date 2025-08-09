@@ -14,9 +14,7 @@ import { getAuth, sendPasswordResetEmail } from 'firebase/auth'
 
 const Login = () => {
     const emailRef = useRef("")
-    const passwordRef = useRef("")
     const [isLoading, setIsLoading] = useState(false)
-    const router = useRouter()
     const { login: loginUser } = useAuth()
 
     const handleSubmit = async () => {
@@ -32,10 +30,13 @@ const Login = () => {
         }
     }
 
-    const handleForgotPassword = async (email: string) => {
+    const handleForgotPassword = async () => {
+
+        setIsLoading(true)
+
         try {
             const auth = getAuth();
-            await sendPasswordResetEmail(auth, email);
+            await sendPasswordResetEmail(auth, emailRef.current);
             Alert.alert("Email Terkirim", "Silakan cek email Anda untuk reset password");
         } catch (error: any) {
             if (error.code === "auth/user-not-found") {
@@ -47,6 +48,7 @@ const Login = () => {
             }
         }
 
+        setIsLoading(false)
     }
 
     return (
@@ -56,49 +58,33 @@ const Login = () => {
 
                 <View style={{ gap: 5, marginTop: spacingY._20 }}>
                     <Typo size={30} fontWeight={"800"}>
-                        Hai,
+                        Yuk,
                     </Typo>
                     <Typo size={30} fontWeight={"800"}>
-                        Kembali Lagi
+                        Ubah Password
                     </Typo>
                 </View>
 
                 {/* form */}
                 <View style={styles.form}>
                     <Typo size={16} color={colors.textLighter}>
-                        Login sekarang untuk lacak pengeluaranmu
+                        Silakan masukkan email Anda untuk mereset password
                     </Typo>
                     <Input
                         placeholder='Masukkan email anda'
                         onChangeText={(value) => (emailRef.current = value)}
                         icon={<Icons.At size={verticalScale(26)} color={colors.neutral300} weight='fill' />}
                     />
-                    <Input
-                        placeholder='Masukkan password anda'
-                        secureTextEntry
-                        onChangeText={(value) => (passwordRef.current = value)}
-                        icon={<Icons.Lock size={verticalScale(26)} color={colors.neutral300} weight='fill' />}
-                    />
                 </View>
-                <Pressable onPress={() => router.navigate("/(auth)/forgotPassword")}>
-                    <Typo size={14} color={colors.text} style={{ alignSelf: "flex-end" }}>
-                        Lupa Password?
-                    </Typo>
-                </Pressable>
 
-                <Button loading={isLoading} onPress={handleSubmit}>
+                <Button loading={isLoading} onPress={handleForgotPassword}>
                     <Typo fontWeight={"700"} color={colors.black} size={20}>
-                        Masuk
+                        Verifikasi Email
                     </Typo>
                 </Button>
 
                 {/* footer */}
-                <View style={styles.footer}>
-                    <Typo size={15}>Belum punya akun?</Typo>
-                    <Pressable onPress={() => router.navigate("/(auth)/register")}>
-                        <Typo size={15} fontWeight={"700"} color={colors.primary}>Daftar</Typo>
-                    </Pressable>
-                </View>
+                
             </View>
         </ScreenWrapper>
     )

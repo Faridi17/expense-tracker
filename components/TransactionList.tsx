@@ -6,7 +6,7 @@ import { TransactionItemProps, TransactionListType } from '@/types'
 import Typo from './Typo'
 import { FlashList } from '@shopify/flash-list'
 import Loading from './Loading'
-import { expenseCategories, incomeCategory } from '@/constants/data'
+import { expenseCategories, goalCategory, incomeCategory } from '@/constants/data'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { formatRupiah } from '@/services/formatRupiah'
 import { Timestamp } from 'firebase/firestore'
@@ -63,8 +63,13 @@ const TransactionItem = ({
     handleClick
 }: TransactionItemProps) => {
     
-    let category =
-        item?.type == 'income' ? incomeCategory : expenseCategories[item.category!]
+     let category =
+    item.type === 'income'
+        ? incomeCategory
+        : item.type === 'goal'
+        ? goalCategory
+        : expenseCategories[item.category!];
+
     const IconComponent = category.icon
 
     const date = (item?.date as Timestamp)?.toDate()?.toLocaleDateString('id-ID', {

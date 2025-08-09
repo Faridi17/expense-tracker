@@ -73,6 +73,7 @@ export type TransactionType = {
   image?: any;
   uid?: string;
   walletId: string;
+  goalId: string;
 };
 
 export type CategoryType = {
@@ -116,6 +117,27 @@ export type BudgetListType = {
 
 export type BudgetItemProps = {
   item: BudgetType;
+  index: number;
+};
+
+export type GoalType = {
+  id?: string;
+  name?: string;
+  target: number;
+  collected: number;
+  startDate: Date | string;
+  endDate: Date | string;
+  uid?: string;
+}
+
+export type GoalListType = {
+  data: GoalType[];
+  loading?: boolean;
+  emptyListMessage?: string;
+}
+
+export type GoalItemProps = {
+  item: GoalType;
   index: number;
 };
 

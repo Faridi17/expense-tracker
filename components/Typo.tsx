@@ -11,14 +11,15 @@ const Typo = ({
     children,
     style,
     textProps = {},
-}: TypoProps) => {
+    onPress, // ⬅️ tambahkan ini
+}: TypoProps & { onPress?: () => void }) => {
     const textStyle: TextStyle = {
         fontSize: size ? verticalScale(size) : verticalScale(18),
         color,
         fontWeight,
     }
     return (
-        <Text style={[textStyle, style]} {...textProps}>
+        <Text style={[textStyle, style]} onPress={onPress} {...textProps}>
             {children}
         </Text>
     )
